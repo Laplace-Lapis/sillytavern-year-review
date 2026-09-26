@@ -1,0 +1,12 @@
+{
+    "display_name": "Year Review",
+    "description": "Displays statistics over past chats similar to Steam Year Review",
+    "author": "Laplace-Lapis",
+    "version": "0.1.0",
+    "js": "index.js",
+    "css": "styles.css",
+    "requires": [],
+    "optional": [],
+    "homePage": "https://github.com/Laplace-Lapis/sillytavern-year-review",
+    "auto_update": true
+}

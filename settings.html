@@ -1,0 +1,28 @@
+<div class="year-review-drawer inline-drawer">
+    <div class="inline-drawer-toggle inline-drawer-header">
+        <b data-i18n="Year Review">Year Review</b>
+        <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+    </div>
+    <div class="inline-drawer-content">
+        <p class="year-review-description" data-i18n="year_review_description">
+            Statistics about your past chats, characters, and providers — grouped by calendar year.
+        </p>
+        <div class="year-review-status">
+            <span data-i18n="Last scan:">Last scan:</span>
+            <span id="yearReviewLastScan">{{lastScanText}}</span>
+        </div>
+        <div class="year-review-row">
+            <div id="yearReviewOpenButton" class="menu_button menu_button_icon">
+                <i class="fa-solid fa-chart-column"></i>
+                <span data-i18n="Open Year Review">Open Year Review</span>
+            </div>
+        </div>
+        <label class="year-review-field" for="yearReviewConcurrency">
+            <span data-i18n="Scan concurrency">Scan concurrency</span>
+            <input id="yearReviewConcurrency" type="number" min="1" max="16" value="{{settings.concurrency}}" class="text_pole widthUnset" />
+        </label>
+        <small class="year-review-hint" data-i18n="year_review_concurrency_hint">
+            Higher values rebuild the cache faster but load the server more heavily during a rebuild.
+        </small>
+    </div>
+</div>
