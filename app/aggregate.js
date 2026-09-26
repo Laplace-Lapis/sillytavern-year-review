@@ -169,8 +169,15 @@ export function reduceDigest(digest, characterMeta) {
         }
     }
 
+    // Sum of each character's OWN distinct-chat count (scanner.js's chatCount, deduped
+    // across that character's years already) rather than summing each year's chat count
+    // below — a chat spanning a Jan 1 boundary is active in two different years, and
+    // summing per-year counts would double-count it in the "all" total otherwise.
+    let allTimeChatCount = 0;
+
     for (const [avatar, charDigest] of Object.entries(digest.characters ?? {})) {
         const meta = characterMeta.get(avatar) ?? { name: avatar, tagNames: [] };
+        allTimeChatCount += charDigest.chatCount ?? 0;
         for (const [year, yearData] of Object.entries(charDigest.y ?? {})) {
             const acc = years[year] ?? (years[year] = emptyYearAccumulator());
             acc.userMessages += yearData.um ?? 0;
@@ -290,6 +297,9 @@ export function reduceDigest(digest, characterMeta) {
         }
         void year;
     }
+    // Overrides the naive per-year sum accumulated above with the deduped total (see the
+    // comment where allTimeChatCount is built).
+    allAcc.chatCount = allTimeChatCount;
     years[ALL_YEARS_KEY] = allAcc;
 
     const yearKeys = Object.keys(years)

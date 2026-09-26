@@ -5,7 +5,7 @@
 
 import { readUserFile, writeUserFile, deleteUserFile } from './api.js';
 
-export const CACHE_VERSION = 1;
+export const CACHE_VERSION = 2;
 
 const DIGEST_FILE = '_yr_digest.json';
 const SUMMARY_FILE = '_yr_summary.json';

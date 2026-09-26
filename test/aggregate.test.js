@@ -47,7 +47,7 @@ function makeDigest(charDigests) {
 test('reduceDigest: sums totals across characters for a year, and folds into "all"', () => {
     const digest = makeDigest({
         'alice.png': {
-            sig: {},
+            sig: {}, chatCount: 1,
             y: {
                 '2024': {
                     um: 10, am: 12, gen: 15, uw: 100, aw: 200, sw: 3, gt: 60000,
@@ -59,7 +59,7 @@ test('reduceDigest: sums totals across characters for a year, and folds into "al
             },
         },
         'bob.png': {
-            sig: {},
+            sig: {}, chatCount: 1,
             y: {
                 '2024': {
                     um: 5, am: 5, gen: 5, uw: 50, aw: 50, sw: 0, gt: 0,
@@ -95,7 +95,7 @@ test('reduceDigest: sums totals across characters for a year, and folds into "al
 test('reduceDigest: new-vs-returning is computed per character\'s first active year', () => {
     const digest = makeDigest({
         'alice.png': {
-            sig: {},
+            sig: {}, chatCount: 1,
             y: {
                 '2023': {
                     um: 1, am: 1, gen: 1, uw: 1, aw: 1, sw: 0, gt: 0, mo: {}, ap: {}, mm: {},
@@ -110,7 +110,7 @@ test('reduceDigest: new-vs-returning is computed per character\'s first active y
             },
         },
         'bob.png': {
-            sig: {},
+            sig: {}, chatCount: 1,
             y: {
                 '2024': {
                     um: 1, am: 1, gen: 1, uw: 1, aw: 1, sw: 0, gt: 0, mo: {}, ap: {}, mm: {},
@@ -135,7 +135,7 @@ test('reduceDigest: new-vs-returning is computed per character\'s first active y
 test('reduceDigest: picks the best superlative candidate across characters', () => {
     const digest = makeDigest({
         'alice.png': {
-            sig: {},
+            sig: {}, chatCount: 1,
             y: {
                 '2024': {
                     um: 0, am: 0, gen: 0, uw: 0, aw: 0, sw: 0, gt: 0, mo: {}, ap: {}, mm: {},
@@ -148,7 +148,7 @@ test('reduceDigest: picks the best superlative candidate across characters', () 
             },
         },
         'bob.png': {
-            sig: {},
+            sig: {}, chatCount: 1,
             y: {
                 '2024': {
                     um: 0, am: 0, gen: 0, uw: 0, aw: 0, sw: 0, gt: 0, mo: {}, ap: {}, mm: {},
@@ -173,7 +173,7 @@ test('reduceDigest: picks the best superlative candidate across characters', () 
 test('reduceDigest: tags are counted per distinct character, not per message', () => {
     const digest = makeDigest({
         'alice.png': {
-            sig: {},
+            sig: {}, chatCount: 1,
             y: {
                 '2024': {
                     um: 100, am: 100, gen: 100, uw: 0, aw: 0, sw: 0, gt: 0, mo: {}, ap: {}, mm: {},
@@ -183,7 +183,7 @@ test('reduceDigest: tags are counted per distinct character, not per message', (
             },
         },
         'bob.png': {
-            sig: {},
+            sig: {}, chatCount: 1,
             y: {
                 '2024': {
                     um: 1, am: 1, gen: 1, uw: 0, aw: 0, sw: 0, gt: 0, mo: {}, ap: {}, mm: {},
@@ -206,7 +206,7 @@ test('reduceDigest: tags are counted per distinct character, not per message', (
 test('reduceDigest: unknown year is kept separate from "all" year listing', () => {
     const digest = makeDigest({
         'alice.png': {
-            sig: {},
+            sig: {}, chatCount: 1,
             y: {
                 unknown: {
                     um: 1, am: 1, gen: 1, uw: 1, aw: 1, sw: 0, gt: 0, mo: {}, ap: {}, mm: {},
@@ -221,4 +221,34 @@ test('reduceDigest: unknown year is kept separate from "all" year listing', () =
     assert.deepEqual(summary.years, []);
     assert.equal(summary.hasUnknown, true);
     assert.equal(summary.byYear.unknown.totals.messages, 2);
+});
+
+test('reduceDigest: "all" chat count does not double-count a chat spanning two years', () => {
+    // One chat active in both 2023 (1 message) and 2024 (1 message) — per-year chats:1 each
+    // is correct on its own, but naively summing those for "all" would report 2 chats when
+    // there's really only one. scanner.js's chatCount (deduped across all of a character's
+    // years) is what reduceDigest must use instead for the "all" total.
+    const digest = makeDigest({
+        'alice.png': {
+            sig: {}, chatCount: 1, // one distinct chat, even though it touches two years
+            y: {
+                '2023': {
+                    um: 0, am: 1, gen: 1, uw: 0, aw: 1, sw: 0, gt: 0, mo: {}, ap: {}, mm: {},
+                    d: {}, h: new Array(24).fill(0), first: null, last: null, chats: 1,
+                    sup: { longestMessage: null, mostSwipes: null, longestGen: null, longestChat: null, bigWordDay: null },
+                },
+                '2024': {
+                    um: 0, am: 1, gen: 1, uw: 0, aw: 1, sw: 0, gt: 0, mo: {}, ap: {}, mm: {},
+                    d: {}, h: new Array(24).fill(0), first: null, last: null, chats: 1,
+                    sup: { longestMessage: null, mostSwipes: null, longestGen: null, longestChat: null, bigWordDay: null },
+                },
+            },
+        },
+    });
+    const meta = resolveCharacterMeta([{ avatar: 'alice.png', name: 'Alice' }], [], {});
+    const summary = reduceDigest(digest, meta);
+
+    assert.equal(summary.byYear['2023'].totals.chats, 1);
+    assert.equal(summary.byYear['2024'].totals.chats, 1);
+    assert.equal(summary.byYear.all.totals.chats, 1, 'the same chat counted once, not twice, across the boundary');
 });
