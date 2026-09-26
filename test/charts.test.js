@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildColorMap, donut, stackedBars, barList, legend } from '../app/charts.js';
+import { buildColorMap, donut, stackedBars, barList, legend, capSegmentsToLabels } from '../app/charts.js';
 
 test('buildColorMap: assigns colors in the given order, deduping repeats', () => {
     const map = buildColorMap(['claude', 'openrouter', 'claude']);
@@ -66,4 +66,32 @@ test('legend: percentages are computed against the provided total, not just the 
 test('legend: "Unknown" gets the neutral color even without an explicit colorMap', () => {
     const html = legend([{ label: 'Unknown', value: 5 }, { label: 'claude', value: 5 }]);
     assert.match(html, /background:var\(--yr-unknown-color\)/);
+});
+
+test('buildColorMap: "Other" always gets its own fixed color, distinct from "Unknown"', () => {
+    const map = buildColorMap(['claude', 'Other', 'Unknown']);
+    assert.equal(map.get('Other'), 'var(--yr-other-color)');
+    assert.notEqual(map.get('Other'), map.get('Unknown'));
+});
+
+test('capSegmentsToLabels: folds everything outside keptLabels into one "Other" segment per row', () => {
+    const rows = [
+        { label: 'Jan', segments: [{ label: 'a', value: 10 }, { label: 'b', value: 5 }, { label: 'c', value: 1 }] },
+        { label: 'Feb', segments: [{ label: 'a', value: 3 }] },
+    ];
+    const capped = capSegmentsToLabels(rows, new Set(['a']));
+
+    assert.deepEqual(capped[0].segments, [{ label: 'a', value: 10 }, { label: 'Other', value: 6 }]);
+    // Feb has nothing outside the kept set, so no zero-value "Other" segment is added.
+    assert.deepEqual(capped[1].segments, [{ label: 'a', value: 3 }]);
+});
+
+test('capSegmentsToLabels: a label out of the kept set in every row still reads as "Other" everywhere, not silently dropped', () => {
+    const rows = [
+        { label: 'Jan', segments: [{ label: 'a', value: 1 }, { label: 'b', value: 1 }] },
+        { label: 'Feb', segments: [{ label: 'a', value: 1 }] },
+        { label: 'Mar', segments: [{ label: 'b', value: 5 }] },
+    ];
+    const capped = capSegmentsToLabels(rows, new Set(['a']));
+    assert.deepEqual(capped.map((r) => r.segments.map((s) => s.label)), [['a', 'Other'], ['a'], ['Other']]);
 });
