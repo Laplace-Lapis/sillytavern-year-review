@@ -2,7 +2,7 @@
     "display_name": "Year Review",
     "description": "Displays statistics over past chats similar to Steam Year Review",
     "author": "Laplace-Lapis",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "js": "index.js",
     "css": "styles.css",
     "requires": [],

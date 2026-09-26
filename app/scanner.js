@@ -120,7 +120,7 @@ function betterOf(current, candidate, isBetter) {
  * @param {string} avatar Character avatar filename ('<name>.png').
  * @param {Array<object>} chatEntries This character's entries from /chats/recent.
  * @param {AbortSignal} [signal]
- * @returns {Promise<{sig: object, y: object}>}
+ * @returns {Promise<{sig: object, y: object, chatCount: number}>}
  */
 async function rebuildCharacterDigest(avatar, chatEntries, signal) {
     const sig = buildSignature(chatEntries);
@@ -137,6 +137,11 @@ async function rebuildCharacterDigest(avatar, chatEntries, signal) {
     // to derive the "biggest word day" and "longest chat" superlatives; not persisted.
     const dayWordsByYear = new Map();
     const chatMessagesByYear = new Map();
+    // Distinct chats with >=1 message, across ALL years — tracked separately from the
+    // per-year chat counts because a chat spanning a Jan 1 boundary is active in two
+    // different years and would otherwise be double-counted when "all" sums the per-year
+    // counts. This is the character's contribution to the "All time" chat total.
+    const allYearsChatIds = new Set();
 
     for (const entry of orderedChats) {
         if (signal?.aborted) {
@@ -259,6 +264,7 @@ async function rebuildCharacterDigest(avatar, chatEntries, signal) {
             const yearChats = chatMessagesByYear.get(year) ?? new Map();
             yearChats.set(entry.file_id, (yearChats.get(entry.file_id) ?? 0) + 1);
             chatMessagesByYear.set(year, yearChats);
+            allYearsChatIds.add(entry.file_id);
         }
     }
 
@@ -288,7 +294,7 @@ async function rebuildCharacterDigest(avatar, chatEntries, signal) {
         }
     }
 
-    return { sig, y: years };
+    return { sig, y: years, chatCount: allYearsChatIds.size };
 }
 
 /**
