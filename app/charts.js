@@ -12,27 +12,105 @@ const SERIES_COLORS = [
     'var(--yr-series-5)', 'var(--yr-series-6)', 'var(--yr-series-7)', 'var(--yr-series-8)',
 ];
 
+const UNKNOWN_COLOR = 'var(--yr-unknown-color)';
+const UNKNOWN_LABELS = new Set(['unknown', 'Unknown']);
+
 function colorFor(index) {
     return SERIES_COLORS[index % SERIES_COLORS.length];
 }
 
-function escapeAttr(value) {
+/**
+ * Assigns one stable color per label, in the given order — meant to be built ONCE from
+ * whichever list is the "canonical" ranking for a dimension (e.g. the APIs donut's sortedDesc
+ * order) and then reused by every other chart that breaks the same dimension down further
+ * (e.g. a month-by-month stacked bar of the same APIs). Without this, two charts that
+ * independently color-by-array-position can assign the same color to different real-world
+ * labels whenever their local sort orders differ (e.g. one ranked by total, the other by
+ * first chronological appearance) — which looks like a bug even when both charts' numbers are
+ * individually correct. `unknown`/`Unknown` always gets a fixed neutral color instead of a
+ * rainbow slot, since it isn't a real category and stealing a bright color for it is
+ * confusing.
+ * @param {string[]} labels In priority order; first label gets the first real color.
+ * @returns {Map<string, string>}
+ */
+export function buildColorMap(labels) {
+    const map = new Map();
+    let nextIndex = 0;
+    for (const label of labels) {
+        if (map.has(label)) {
+            continue;
+        }
+        map.set(label, UNKNOWN_LABELS.has(label) ? UNKNOWN_COLOR : colorFor(nextIndex++));
+    }
+    return map;
+}
+
+function resolveColor(label, index, colorMap) {
+    if (colorMap?.has(label)) {
+        return colorMap.get(label);
+    }
+    if (UNKNOWN_LABELS.has(label)) {
+        return UNKNOWN_COLOR;
+    }
+    return colorFor(index);
+}
+
+/**
+ * Renders an HTML (not SVG) legend list for a donut or stacked-bar chart: one row per item
+ * with a color swatch, label, value, and share of the total. Meant to sit next to or below
+ * the chart it describes, since hovering an SVG arc for its tooltip isn't discoverable and a
+ * label-less donut is unreadable on its own (see CLAUDE.md).
+ * @param {Array<{label: string, value: number}>} items
+ * @param {object} [options]
+ * @param {Map<string, string>} [options.colorMap] Shared color map (see buildColorMap).
+ * @param {(item: object) => string} [options.formatValue]
+ * @param {number} [options.total] Denominator for the percentage; defaults to the items' own sum.
+ * @returns {string} HTML markup (a `<ul>`), not SVG.
+ */
+export function legend(items, options = {}) {
+    const { colorMap, formatValue = (item) => String(item.value), total } = options;
+    const sum = total ?? Math.max(1, items.reduce((s, i) => s + i.value, 0));
+    return `<ul class="yr-legend">${items.map((item, index) => {
+        const color = resolveColor(item.label, index, colorMap);
+        const pct = ((item.value / sum) * 100).toFixed(1);
+        return `<li class="yr-legend-item">
+            <span class="yr-legend-swatch" style="background:${color}"></span>
+            <span class="yr-legend-label">${escapeAttr(item.label)}</span>
+            <span class="yr-legend-value">${escapeAttr(formatValue(item))} (${pct}%)</span>
+        </li>`;
+    }).join('')}</ul>`;
+}
+
+/**
+ * Escapes a value for safe interpolation into HTML/SVG markup (text content or an attribute
+ * value in double quotes). Exported so views that build markup directly (not through one of
+ * the chart functions below) can escape character names, avatar filenames, etc. themselves —
+ * see CLAUDE.md's "Chat message text and character names reach `innerHTML`..." gotcha.
+ * @param {unknown} value
+ * @returns {string}
+ */
+export function escapeAttr(value) {
     return String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' }[c]));
 }
 
 /**
  * Horizontal ranked bar list — used for top characters, top models, top APIs, top tags.
- * @param {Array<{label: string, value: number}>} items Pre-sorted, longest first.
+ * @param {Array<{label: string, value: number, badge?: string}>} items Pre-sorted, longest
+ *   first. An item's optional `badge` (e.g. 'new') renders as a small marker before its label —
+ *   used for "this character is new this year" in the top-characters list.
  * @param {object} [options]
  * @param {number} [options.max] Value the longest bar should represent (defaults to items[0].value).
  * @param {number} [options.width]
  * @param {number} [options.barHeight]
  * @param {number} [options.gap]
  * @param {(item: object) => string} [options.formatValue]
+ * @param {Map<string, string>} [options.colorMap] Shared color map (see buildColorMap) — omit
+ *   to color by rank position, which is fine when nothing else on the page shares this list's
+ *   labels (e.g. top characters; contrast with providers.js's APIs, which do share).
  * @returns {string} SVG markup.
  */
 export function barList(items, options = {}) {
-    const { width = 480, barHeight = 22, gap = 8, formatValue = (item) => String(item.value) } = options;
+    const { width = 480, barHeight = 22, gap = 8, formatValue = (item) => String(item.value), colorMap } = options;
     const max = options.max ?? Math.max(1, ...items.map((item) => item.value));
     const rowHeight = barHeight + gap;
     const height = Math.max(1, items.length) * rowHeight;
@@ -42,10 +120,14 @@ export function barList(items, options = {}) {
     const rows = items.map((item, index) => {
         const barWidth = Math.max(2, (item.value / max) * trackWidth);
         const y = index * rowHeight;
+        const badge = item.badge
+            ? `<circle cx="${labelWidth - 4}" cy="${y + barHeight / 2}" r="3" class="yr-bar-badge yr-bar-badge-${escapeAttr(item.badge)}"><title>${escapeAttr(item.badge)}</title></circle>`
+            : '';
         return `
-            <text x="${labelWidth - 8}" y="${y + barHeight / 2}" text-anchor="end" dominant-baseline="middle" class="yr-bar-label">${escapeAttr(item.label)}</text>
+            <text x="${labelWidth - (item.badge ? 14 : 8)}" y="${y + barHeight / 2}" text-anchor="end" dominant-baseline="middle" class="yr-bar-label">${escapeAttr(item.label)}</text>
+            ${badge}
             <rect x="${labelWidth}" y="${y}" width="${trackWidth}" height="${barHeight}" rx="4" class="yr-bar-track"></rect>
-            <rect x="${labelWidth}" y="${y}" width="${barWidth}" height="${barHeight}" rx="4" fill="${colorFor(index)}"></rect>
+            <rect x="${labelWidth}" y="${y}" width="${barWidth}" height="${barHeight}" rx="4" fill="${resolveColor(item.label, index, colorMap)}"></rect>
             <text x="${labelWidth + barWidth + 8}" y="${y + barHeight / 2}" dominant-baseline="middle" class="yr-bar-value">${escapeAttr(formatValue(item))}</text>
         `;
     }).join('');
@@ -58,21 +140,27 @@ export function barList(items, options = {}) {
  * them (e.g. one per month), each segment sized by its share of that row's total.
  * @param {Array<{label: string, segments: Array<{label: string, value: number}>}>} rows
  * @param {object} [options]
+ * @param {Map<string, string>} [options.colorMap] Shared color map (see buildColorMap) — pass
+ *   the SAME map used for any other chart of the same dimension (e.g. the APIs donut), or
+ *   segments will get colored by first-chronological-appearance-across-rows instead of by
+ *   rank, which can assign a different color to the same label than a sibling chart uses.
  * @returns {string} SVG markup.
  */
 export function stackedBars(rows, options = {}) {
-    const { width = 480, barHeight = 18, gap = 6, labelWidth = 60 } = options;
+    const { width = 480, barHeight = 18, gap = 6, labelWidth = 60, colorMap } = options;
     const rowHeight = barHeight + gap;
     const height = Math.max(1, rows.length) * rowHeight;
     const trackWidth = width - labelWidth - 8;
 
-    // Consistent color per segment label across all rows (e.g. same model = same color in
-    // every month), not per position.
-    const labelOrder = [];
-    for (const row of rows) {
-        for (const segment of row.segments) {
-            if (!labelOrder.includes(segment.label)) {
-                labelOrder.push(segment.label);
+    // Fallback when no shared colorMap is supplied: still consistent across THIS chart's own
+    // rows (first-seen order), just not guaranteed to match any other chart's assignment.
+    const fallbackOrder = [];
+    if (!colorMap) {
+        for (const row of rows) {
+            for (const segment of row.segments) {
+                if (!fallbackOrder.includes(segment.label)) {
+                    fallbackOrder.push(segment.label);
+                }
             }
         }
     }
@@ -83,7 +171,8 @@ export function stackedBars(rows, options = {}) {
         let x = labelWidth;
         const segments = row.segments.map((segment) => {
             const segWidth = (segment.value / total) * trackWidth;
-            const rect = `<rect x="${x}" y="${y}" width="${Math.max(0, segWidth)}" height="${barHeight}" fill="${colorFor(labelOrder.indexOf(segment.label))}"><title>${escapeAttr(segment.label)}: ${escapeAttr(segment.value)}</title></rect>`;
+            const color = resolveColor(segment.label, fallbackOrder.indexOf(segment.label), colorMap);
+            const rect = `<rect x="${x}" y="${y}" width="${Math.max(0, segWidth)}" height="${barHeight}" fill="${color}"><title>${escapeAttr(segment.label)}: ${escapeAttr(segment.value)}</title></rect>`;
             x += segWidth;
             return rect;
         }).join('');
@@ -94,13 +183,19 @@ export function stackedBars(rows, options = {}) {
 }
 
 /**
- * A donut chart with a center label (e.g. total count).
+ * A donut chart with a center label (e.g. total count). Renders at a fixed intrinsic size and
+ * relies on its caller wrapping it in a centering container (see `.yr-donut-block` in
+ * review.css) — an SVG with `width`/`height` set is centered *within itself*, but a block
+ * element with no `margin: auto` still hugs the left edge of a wider parent panel.
  * @param {Array<{label: string, value: number}>} items
  * @param {object} [options]
+ * @param {Map<string, string>} [options.colorMap] Shared color map (see buildColorMap) — pass
+ *   this when another chart on the page breaks down the same dimension (e.g. an API-by-month
+ *   stacked bar next to an API donut) so the two agree on which color means what.
  * @returns {string} SVG markup.
  */
 export function donut(items, options = {}) {
-    const { size = 200, thickness = 28, centerLabel = '' } = options;
+    const { size = 200, thickness = 28, centerLabel = '', colorMap } = options;
     const total = Math.max(1, items.reduce((sum, item) => sum + item.value, 0));
     const radius = size / 2 - thickness / 2;
     const cx = size / 2;
@@ -111,7 +206,7 @@ export function donut(items, options = {}) {
     const arcs = items.map((item, index) => {
         const fraction = item.value / total;
         const dash = fraction * circumference;
-        const arc = `<circle cx="${cx}" cy="${cy}" r="${radius}" fill="none" stroke="${colorFor(index)}" stroke-width="${thickness}"
+        const arc = `<circle cx="${cx}" cy="${cy}" r="${radius}" fill="none" stroke="${resolveColor(item.label, index, colorMap)}" stroke-width="${thickness}"
             stroke-dasharray="${dash} ${circumference - dash}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})">
             <title>${escapeAttr(item.label)}: ${escapeAttr(item.value)}</title>
         </circle>`;
@@ -166,14 +261,25 @@ export function calendarHeatmap(dayCounts, year, options = {}) {
 
 /**
  * A simple line/area chart over an ordered series (e.g. messages per month).
+ *
+ * Unlike the other chart types, this one does NOT stretch to `width: 100%` of its container:
+ * for a long series (e.g. "All time" across several years) that would squeeze every point
+ * into the same fixed pixel width as a 12-point single year, cramming axis labels into
+ * illegibility. Instead the SVG's native width grows with the point count (roughly constant
+ * pixels-per-point), and the caller is expected to wrap the output in a horizontally
+ * scrollable container (`.yr-scroll-x` in review.css) so a long series scrolls instead of
+ * squishing. For a typical ≤12-point single year this still comes out close to the old fixed
+ * 480px default, so nothing visually changes for the common case.
  * @param {Array<{label: string, value: number}>} points
  * @param {object} [options]
+ * @param {number} [options.width] Explicit pixel width; defaults to ~40px per point (min 360).
  * @returns {string} SVG markup.
  */
 export function lineSeries(points, options = {}) {
-    const { width = 480, height = 160, padding = 24, area = true } = options;
+    const { height = 160, padding = 24, area = true } = options;
+    const width = options.width ?? Math.max(360, points.length * 40);
     if (points.length === 0) {
-        return `<svg viewBox="0 0 ${width} ${height}" width="100%" height="${height}" class="yr-chart yr-line"></svg>`;
+        return `<svg viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" class="yr-chart yr-line"></svg>`;
     }
     const max = Math.max(1, ...points.map((p) => p.value));
     const innerWidth = width - padding * 2;
@@ -194,7 +300,7 @@ export function lineSeries(points, options = {}) {
     const dots = coords.map(([x, y], index) => `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" class="yr-line-dot"><title>${escapeAttr(points[index].label)}: ${escapeAttr(points[index].value)}</title></circle>`).join('');
     const labels = points.map((point, index) => `<text x="${coords[index][0].toFixed(1)}" y="${height - 4}" text-anchor="middle" class="yr-line-axis-label">${escapeAttr(point.label)}</text>`).join('');
 
-    return `<svg viewBox="0 0 ${width} ${height}" width="100%" height="${height}" class="yr-chart yr-line">
+    return `<svg viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" class="yr-chart yr-line">
         ${area ? `<path d="${areaPath}" class="yr-line-area"></path>` : ''}
         <path d="${linePath}" class="yr-line-path" fill="none"></path>
         ${dots}
@@ -203,20 +309,30 @@ export function lineSeries(points, options = {}) {
 }
 
 /**
- * A 24-bar histogram for hour-of-day activity.
+ * A 24-bar histogram for hour-of-day activity, with axis labels every `labelEvery` hours.
  * @param {number[]} hours Array of 24 counts.
  * @param {object} [options]
+ * @param {number} [options.labelEvery] Show an hour label every N bars (default every 3 hours).
  * @returns {string} SVG markup.
  */
 export function hourHistogram(hours, options = {}) {
-    const { width = 480, height = 100, barGap = 2 } = options;
+    const { width = 480, height = 116, barGap = 2, labelEvery = 3 } = options;
+    const labelAreaHeight = 20;
+    const barAreaHeight = height - labelAreaHeight;
     const max = Math.max(1, ...hours);
     const barWidth = width / 24 - barGap;
     const bars = hours.map((count, hour) => {
-        const barHeight = (count / max) * (height - 16);
+        const barHeight = (count / max) * (barAreaHeight - 4);
         const x = hour * (barWidth + barGap);
-        const y = height - barHeight;
+        const y = barAreaHeight - barHeight;
         return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barWidth.toFixed(1)}" height="${barHeight.toFixed(1)}" class="yr-hour-bar"><title>${hour}:00 — ${count}</title></rect>`;
     }).join('');
-    return `<svg viewBox="0 0 ${width} ${height}" width="100%" height="${height}" class="yr-chart yr-hour-histogram">${bars}</svg>`;
+    const labels = hours.map((count, hour) => {
+        if (hour % labelEvery !== 0) {
+            return '';
+        }
+        const x = hour * (barWidth + barGap) + barWidth / 2;
+        return `<text x="${x.toFixed(1)}" y="${height - 4}" text-anchor="middle" class="yr-hour-axis-label">${hour}h</text>`;
+    }).join('');
+    return `<svg viewBox="0 0 ${width} ${height}" width="100%" height="${height}" class="yr-chart yr-hour-histogram">${bars}${labels}</svg>`;
 }

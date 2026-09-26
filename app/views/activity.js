@@ -20,7 +20,7 @@ export function renderActivity(section, yearData, year) {
         <div class="yr-two-col">
             <div class="yr-panel">
                 <h3 class="yr-panel-title">Messages per month</h3>
-                ${lineSeries(monthPoints)}
+                <div class="yr-scroll-x">${lineSeries(monthPoints)}</div>
             </div>
             <div class="yr-panel">
                 <h3 class="yr-panel-title">Activity by hour of day</h3>

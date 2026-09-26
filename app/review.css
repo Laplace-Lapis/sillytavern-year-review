@@ -18,6 +18,11 @@
     --yr-series-6: #7cf0ff;
     --yr-series-7: #ff7ca3;
     --yr-series-8: #b8d17c;
+    --yr-unknown-color: #5a5d6e;
+    --yr-new-color: #7cffb8;
+    --yr-gold: #e8c04c;
+    --yr-silver: #c7ccd6;
+    --yr-bronze: #d0895a;
 }
 
 * {
@@ -263,8 +268,62 @@ img {
     font-weight: 600;
 }
 
+/* Wraps a donut() SVG (+ optional legend) so it's centered within its panel — the SVG itself
+   is centered on ITS OWN canvas by construction, but a block-level element with no margin:
+   auto still hugs the left edge of a wider parent (see charts.js's donut() doc comment). */
+.yr-donut-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75em;
+}
+
+.yr-legend {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    display: grid;
+    gap: 0.35em;
+}
+
+.yr-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    font-size: 0.85em;
+}
+
+.yr-legend-swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.yr-legend-label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--yr-text);
+}
+
+.yr-legend-value {
+    color: var(--yr-text-muted);
+    flex-shrink: 0;
+}
+
+/* Charts whose native width scales with data density (lineSeries — see its doc comment)
+   render wider than their panel instead of squishing, so wrap them in a scroll container. */
+.yr-scroll-x {
+    overflow-x: auto;
+}
+
 .yr-heatmap-cell {
     fill: color-mix(in srgb, var(--yr-accent) calc(var(--yr-intensity) * 100%), var(--yr-bg-elevated));
+    stroke: var(--yr-border);
+    stroke-width: 1;
 }
 
 .yr-line-path {
@@ -281,11 +340,83 @@ img {
     fill: var(--yr-accent);
 }
 
-.yr-line-axis-label {
+.yr-line-axis-label, .yr-hour-axis-label {
     fill: var(--yr-text-muted);
     font-size: 10px;
 }
 
 .yr-hour-bar {
     fill: var(--yr-accent);
+}
+
+.yr-bar-badge-new {
+    fill: var(--yr-new-color);
+}
+
+/* Top-characters avatar leaderboard (characters.js). Rendered in podium order (4th, 2nd, 1st,
+   3rd, 5th) directly in the DOM — no CSS `order` trick needed since that's already the visual
+   order we want, left to right. */
+.yr-leaderboard {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 1em;
+    flex-wrap: wrap;
+    margin-bottom: 1em;
+}
+
+.yr-leaderboard-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4em;
+    width: 5.5em;
+}
+
+.yr-leaderboard-avatar {
+    width: 4.5em;
+    height: 4.5em;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--yr-border);
+    background: var(--yr-bg-elevated);
+}
+
+.yr-leaderboard-item[data-rank='1'] .yr-leaderboard-avatar {
+    width: 6em;
+    height: 6em;
+    border-color: var(--yr-gold);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--yr-gold) 40%, transparent);
+}
+
+.yr-leaderboard-item[data-rank='2'] .yr-leaderboard-avatar {
+    border-color: var(--yr-silver);
+}
+
+.yr-leaderboard-item[data-rank='3'] .yr-leaderboard-avatar {
+    border-color: var(--yr-bronze);
+}
+
+.yr-leaderboard-rank {
+    font-size: 0.75em;
+    font-weight: 600;
+    color: var(--yr-text-muted);
+}
+
+.yr-leaderboard-item[data-rank='1'] .yr-leaderboard-rank { color: var(--yr-gold); }
+.yr-leaderboard-item[data-rank='2'] .yr-leaderboard-rank { color: var(--yr-silver); }
+.yr-leaderboard-item[data-rank='3'] .yr-leaderboard-rank { color: var(--yr-bronze); }
+
+.yr-leaderboard-name {
+    font-size: 0.8em;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+.yr-leaderboard-count {
+    font-size: 0.7em;
+    color: var(--yr-text-muted);
 }
