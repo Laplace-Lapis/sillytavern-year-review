@@ -1,0 +1,9 @@
+{
+    "name": "sillytavern-year-review",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "test": "node --test test/",
+        "lint": "eslint index.js app/**/*.js"
+    }
+}

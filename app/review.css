@@ -1,0 +1,291 @@
+/* Self-contained design tokens. This page runs in its own document (a separate browser
+   tab), so ST's --SmartTheme* variables don't exist here — see CLAUDE.md "Deviations". */
+:root {
+    color-scheme: dark;
+    --yr-bg: #15161a;
+    --yr-bg-elevated: #1d1f26;
+    --yr-border: #2a2d38;
+    --yr-text: #e8e8ec;
+    --yr-text-muted: #9a9ca8;
+    --yr-accent: #7c9eff;
+    --yr-accent-soft: rgba(124, 158, 255, 0.15);
+    --yr-radius: 10px;
+    --yr-series-1: #7c9eff;
+    --yr-series-2: #ff9f7c;
+    --yr-series-3: #7cffb8;
+    --yr-series-4: #ffd97c;
+    --yr-series-5: #d17cff;
+    --yr-series-6: #7cf0ff;
+    --yr-series-7: #ff7ca3;
+    --yr-series-8: #b8d17c;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: var(--yr-bg);
+    color: var(--yr-text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+img {
+    max-width: 100%;
+}
+
+[hidden] {
+    display: none !important;
+}
+
+.yr-topbar {
+    display: flex;
+    align-items: center;
+    gap: 1em;
+    flex-wrap: wrap;
+    padding: 0.75em 1.25em;
+    border-bottom: 1px solid var(--yr-border);
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    background: var(--yr-bg);
+    z-index: 10;
+}
+
+.yr-title {
+    font-size: 1.1em;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    color: var(--yr-accent);
+}
+
+.yr-year-switcher {
+    display: flex;
+    gap: 0.35em;
+    flex-wrap: wrap;
+    flex: 1;
+}
+
+.yr-year-button {
+    background: transparent;
+    border: 1px solid var(--yr-border);
+    color: var(--yr-text-muted);
+    border-radius: 999px;
+    padding: 0.3em 0.9em;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+.yr-year-button.is-active {
+    background: var(--yr-accent-soft);
+    border-color: var(--yr-accent);
+    color: var(--yr-text);
+}
+
+.yr-topbar-actions {
+    display: flex;
+    gap: 0.5em;
+}
+
+.yr-button {
+    background: var(--yr-bg-elevated);
+    border: 1px solid var(--yr-border);
+    color: var(--yr-text);
+    border-radius: 6px;
+    padding: 0.4em 0.9em;
+    cursor: pointer;
+    font-size: 0.9em;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+}
+
+.yr-button-primary {
+    background: var(--yr-accent);
+    border-color: var(--yr-accent);
+    color: #10131c;
+}
+
+.yr-progress {
+    padding: 0.5em 1.25em;
+    border-bottom: 1px solid var(--yr-border);
+}
+
+.yr-progress-bar {
+    height: 6px;
+    border-radius: 999px;
+    background: var(--yr-bg-elevated);
+    overflow: hidden;
+}
+
+.yr-progress-fill {
+    height: 100%;
+    background: var(--yr-accent);
+    width: 0%;
+    transition: width 0.2s ease;
+}
+
+.yr-progress-label {
+    margin-top: 0.35em;
+    font-size: 0.85em;
+    color: var(--yr-text-muted);
+}
+
+.yr-content {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 1.25em;
+}
+
+.yr-empty-state, .yr-loading-state {
+    text-align: center;
+    padding: 4em 1em;
+    color: var(--yr-text-muted);
+}
+
+.yr-empty-state i, .yr-loading-state i {
+    font-size: 2em;
+    margin-bottom: 0.5em;
+    display: block;
+}
+
+.yr-section {
+    margin-bottom: 2em;
+}
+
+.yr-section-title {
+    font-size: 1em;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--yr-text-muted);
+    margin: 0 0 0.75em 0;
+}
+
+.yr-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75em;
+}
+
+.yr-card {
+    background: var(--yr-bg-elevated);
+    border: 1px solid var(--yr-border);
+    border-radius: var(--yr-radius);
+    padding: 1em;
+}
+
+.yr-card-value {
+    font-size: 1.6em;
+    font-weight: 600;
+    color: var(--yr-accent);
+}
+
+.yr-card-label {
+    color: var(--yr-text-muted);
+    font-size: 0.85em;
+    margin-top: 0.25em;
+}
+
+.yr-panel {
+    background: var(--yr-bg-elevated);
+    border: 1px solid var(--yr-border);
+    border-radius: var(--yr-radius);
+    padding: 1em;
+    margin-bottom: 0.75em;
+}
+
+.yr-panel-title {
+    font-size: 0.9em;
+    color: var(--yr-text-muted);
+    margin: 0 0 0.75em 0;
+}
+
+.yr-two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75em;
+}
+
+@media (max-width: 640px) {
+    .yr-two-col {
+        grid-template-columns: 1fr;
+    }
+}
+
+.yr-superlative-list {
+    display: grid;
+    gap: 0.5em;
+}
+
+.yr-superlative {
+    display: flex;
+    justify-content: space-between;
+    gap: 1em;
+    padding: 0.5em 0;
+    border-bottom: 1px solid var(--yr-border);
+}
+
+.yr-superlative:last-child {
+    border-bottom: none;
+}
+
+.yr-superlative-label {
+    color: var(--yr-text-muted);
+}
+
+/* --- chart primitives (app/charts.js) --- */
+
+.yr-chart {
+    display: block;
+}
+
+.yr-bar-label {
+    fill: var(--yr-text-muted);
+    font-size: 11px;
+}
+
+.yr-bar-value {
+    fill: var(--yr-text);
+    font-size: 11px;
+}
+
+.yr-bar-track {
+    fill: var(--yr-border);
+}
+
+.yr-donut-center {
+    fill: var(--yr-text);
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.yr-heatmap-cell {
+    fill: color-mix(in srgb, var(--yr-accent) calc(var(--yr-intensity) * 100%), var(--yr-bg-elevated));
+}
+
+.yr-line-path {
+    stroke: var(--yr-accent);
+    stroke-width: 2;
+}
+
+.yr-line-area {
+    fill: var(--yr-accent-soft);
+    stroke: none;
+}
+
+.yr-line-dot {
+    fill: var(--yr-accent);
+}
+
+.yr-line-axis-label {
+    fill: var(--yr-text-muted);
+    font-size: 10px;
+}
+
+.yr-hour-bar {
+    fill: var(--yr-accent);
+}

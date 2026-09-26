@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <title>Year Review</title>
+    <link rel="stylesheet" href="/css/fontawesome.min.css">
+    <link rel="stylesheet" href="/css/solid.min.css">
+    <link rel="stylesheet" href="review.css?v=1">
+</head>
+<body>
+    <header class="yr-topbar">
+        <h1 class="yr-title"><i class="fa-solid fa-chart-column"></i> Year Review</h1>
+        <nav id="yrYearSwitcher" class="yr-year-switcher" aria-label="Select year"></nav>
+        <div class="yr-topbar-actions">
+            <button id="yrRebuildButton" class="yr-button yr-button-primary" type="button">
+                <i class="fa-solid fa-arrows-rotate"></i> Rebuild cache
+            </button>
+            <button id="yrCancelButton" class="yr-button" type="button" hidden>
+                <i class="fa-solid fa-xmark"></i> Cancel
+            </button>
+        </div>
+    </header>
+
+    <div id="yrProgress" class="yr-progress" hidden>
+        <div class="yr-progress-bar"><div id="yrProgressFill" class="yr-progress-fill"></div></div>
+        <div id="yrProgressLabel" class="yr-progress-label"></div>
+    </div>
+
+    <main id="yrContent" class="yr-content">
+        <div id="yrEmptyState" class="yr-empty-state" hidden>
+            <i class="fa-solid fa-box-open"></i>
+            <p>No cached data yet. Click <strong>Rebuild cache</strong> to scan your chat history.</p>
+        </div>
+        <div id="yrLoadingState" class="yr-loading-state">
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            <p>Loading…</p>
+        </div>
+
+        <section id="yrHeroSection" class="yr-section" hidden></section>
+        <section id="yrActivitySection" class="yr-section" hidden></section>
+        <section id="yrCharactersSection" class="yr-section" hidden></section>
+        <section id="yrProvidersSection" class="yr-section" hidden></section>
+        <section id="yrTagsSection" class="yr-section" hidden></section>
+        <section id="yrSuperlativesSection" class="yr-section" hidden></section>
+    </main>
+
+    <script type="module" src="review.js?v=1"></script>
+</body>
+</html>
