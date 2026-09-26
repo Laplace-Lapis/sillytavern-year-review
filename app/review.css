@@ -19,6 +19,7 @@
     --yr-series-7: #ff7ca3;
     --yr-series-8: #b8d17c;
     --yr-unknown-color: #5a5d6e;
+    --yr-other-color: #383a48;
     --yr-new-color: #7cffb8;
     --yr-gold: #e8c04c;
     --yr-silver: #c7ccd6;
@@ -201,12 +202,53 @@ img {
     border-radius: var(--yr-radius);
     padding: 1em;
     margin-bottom: 0.75em;
+    /* Grid items default to min-width: auto, i.e. their content's min-content size — a wide
+       child (e.g. a many-month lineSeries inside .yr-scroll-x) would otherwise force this
+       panel, and therefore its whole .yr-two-col grid track, to grow past the column's fair
+       share, blowing out the page into body-level horizontal scroll and starving the sibling
+       column down to a sliver (see CLAUDE.md's "grid items need min-width: 0" gotcha). */
+    min-width: 0;
 }
 
 .yr-panel-title {
     font-size: 0.9em;
     color: var(--yr-text-muted);
     margin: 0 0 0.75em 0;
+}
+
+/* A small carousel header for a panel that can show more than one breakdown of the same
+   data (e.g. "API mix by month" vs. "Model mix by month" in views/providers.js). */
+.yr-chart-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75em;
+    margin: 0 0 0.75em 0;
+}
+
+.yr-chart-toggle-arrow {
+    background: transparent;
+    border: 1px solid var(--yr-border);
+    color: var(--yr-text-muted);
+    border-radius: 999px;
+    width: 1.6em;
+    height: 1.6em;
+    line-height: 1;
+    cursor: pointer;
+    font-size: 0.9em;
+    flex-shrink: 0;
+}
+
+.yr-chart-toggle-arrow:hover {
+    color: var(--yr-text);
+    border-color: var(--yr-accent);
+}
+
+.yr-chart-toggle-label {
+    font-size: 0.9em;
+    color: var(--yr-text-muted);
+    min-width: 12em;
+    text-align: center;
 }
 
 .yr-two-col {
@@ -315,9 +357,14 @@ img {
 }
 
 /* Charts whose native width scales with data density (lineSeries — see its doc comment)
-   render wider than their panel instead of squishing, so wrap them in a scroll container. */
+   render wider than their panel instead of squishing, so wrap them in a scroll container.
+   min-width: 0 is defense in depth for the same underlying issue as .yr-panel's (an
+   overflow:auto box can still be blamed for its content's intrinsic width by an ancestor's
+   sizing algorithm) — .yr-panel's own min-width: 0 is what actually fixes the grid case here,
+   but this keeps the scroll box safe if it's ever reused inside a flex container instead. */
 .yr-scroll-x {
     overflow-x: auto;
+    min-width: 0;
 }
 
 .yr-heatmap-cell {

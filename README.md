@@ -49,6 +49,12 @@ AGPLv3
 
 ## Changelog
 
+0.4.0 - fixed the "Messages per month" scroll fix from 0.3.0 actually blowing out the whole
+page's width instead of scrolling within its own chart; added a "Model mix by month" chart,
+with ‹/› arrows to switch between it and "API mix by month" in the same panel — useful if you
+mostly use one API (e.g. OpenRouter) for many different models, where the API breakdown alone
+doesn't tell you much.
+
 0.3.0 - top-5 character avatar podium in the Characters section; new-vs-returning is now a
 legend with both counts instead of a single center number; new characters are marked in the
 top-characters list; the API donut and its monthly breakdown now use matching colors, with a

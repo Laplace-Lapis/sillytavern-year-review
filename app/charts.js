@@ -14,9 +14,21 @@ const SERIES_COLORS = [
 
 const UNKNOWN_COLOR = 'var(--yr-unknown-color)';
 const UNKNOWN_LABELS = new Set(['unknown', 'Unknown']);
+const OTHER_COLOR = 'var(--yr-other-color)';
+const OTHER_LABEL = 'Other';
 
 function colorFor(index) {
     return SERIES_COLORS[index % SERIES_COLORS.length];
+}
+
+function fixedColorFor(label) {
+    if (UNKNOWN_LABELS.has(label)) {
+        return UNKNOWN_COLOR;
+    }
+    if (label === OTHER_LABEL) {
+        return OTHER_COLOR;
+    }
+    return null;
 }
 
 /**
@@ -40,7 +52,7 @@ export function buildColorMap(labels) {
         if (map.has(label)) {
             continue;
         }
-        map.set(label, UNKNOWN_LABELS.has(label) ? UNKNOWN_COLOR : colorFor(nextIndex++));
+        map.set(label, fixedColorFor(label) ?? colorFor(nextIndex++));
     }
     return map;
 }
@@ -49,10 +61,7 @@ function resolveColor(label, index, colorMap) {
     if (colorMap?.has(label)) {
         return colorMap.get(label);
     }
-    if (UNKNOWN_LABELS.has(label)) {
-        return UNKNOWN_COLOR;
-    }
-    return colorFor(index);
+    return fixedColorFor(label) ?? colorFor(index);
 }
 
 /**
@@ -133,6 +142,39 @@ export function barList(items, options = {}) {
     }).join('');
 
     return `<svg viewBox="0 0 ${width} ${height}" width="100%" height="${height}" class="yr-chart yr-bar-list">${rows}</svg>`;
+}
+
+/**
+ * Reduces each row's segments down to a fixed set of "kept" labels, folding everything else
+ * into a single `'Other'` segment per row. Meant for a high-cardinality breakdown (e.g. every
+ * model ever used, across many months) rendered as `stackedBars` — without this, a long tail
+ * of one-off labels each claims its own recycled color (`buildColorMap` only has 8 real colors
+ * before it wraps around), which stops being readable well before 8 distinct labels are on
+ * screen at once. `keptLabels` should be the same fixed set for every row (e.g. that
+ * dimension's overall top N for the whole year), not recomputed per row — a model that's #3
+ * in January but falls out of the top N by June should still read as "Other" in June, not
+ * silently disappear or swap identity.
+ * @param {Array<{label: string, segments: Array<{label: string, value: number}>}>} rows
+ * @param {Set<string>} keptLabels Labels to keep as their own segment; everything else is
+ *   summed into one `'Other'` segment (omitted entirely for a row where it would be zero).
+ * @returns {Array<{label: string, segments: Array<{label: string, value: number}>}>}
+ */
+export function capSegmentsToLabels(rows, keptLabels) {
+    return rows.map((row) => {
+        const kept = [];
+        let otherTotal = 0;
+        for (const segment of row.segments) {
+            if (keptLabels.has(segment.label)) {
+                kept.push(segment);
+            } else {
+                otherTotal += segment.value;
+            }
+        }
+        return {
+            label: row.label,
+            segments: otherTotal > 0 ? [...kept, { label: OTHER_LABEL, value: otherTotal }] : kept,
+        };
+    });
 }
 
 /**
