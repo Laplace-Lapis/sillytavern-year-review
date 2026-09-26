@@ -49,4 +49,11 @@ AGPLv3
 
 ## Changelog
 
+0.3.0 - top-5 character avatar podium in the Characters section; new-vs-returning is now a
+legend with both counts instead of a single center number; new characters are marked in the
+top-characters list; the API donut and its monthly breakdown now use matching colors, with a
+legend on the donut; fixed the "Messages per month" chart skipping zero-activity months and
+squeezing "All time" into the same width as a single year (it now scrolls); daily activity grid
+now shows outlines by default; hour-of-day chart has axis labels.
+
 0.2.0 - changed digest to have separate across all years count rather then sum per year counts, which was double counting multi-year chats. 

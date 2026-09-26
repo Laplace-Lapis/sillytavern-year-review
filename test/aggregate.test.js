@@ -252,3 +252,97 @@ test('reduceDigest: "all" chat count does not double-count a chat spanning two y
     assert.equal(summary.byYear['2024'].totals.chats, 1);
     assert.equal(summary.byYear.all.totals.chats, 1, 'the same chat counted once, not twice, across the boundary');
 });
+
+test('reduceDigest: a specific year\'s months are zero-filled Jan–Dec, not skipped', () => {
+    const digest = makeDigest({
+        'alice.png': {
+            sig: {}, chatCount: 1,
+            y: {
+                '2024': {
+                    um: 0, am: 2, gen: 2, uw: 0, aw: 2, sw: 0, gt: 0, mo: {}, ap: {},
+                    mm: {
+                        '2024-01': { am: 1, mo: {}, ap: {} },
+                        '2024-06': { am: 1, mo: {}, ap: {} },
+                    },
+                    d: {}, h: new Array(24).fill(0), first: 1, last: 2, chats: 1,
+                    sup: { longestMessage: null, mostSwipes: null, longestGen: null, longestChat: null, bigWordDay: null },
+                },
+            },
+        },
+    });
+    const meta = resolveCharacterMeta([{ avatar: 'alice.png', name: 'Alice' }], [], {});
+    const summary = reduceDigest(digest, meta);
+    const months = summary.byYear['2024'].months;
+
+    assert.equal(months.length, 12, 'every month of the year is present, not just the active ones');
+    assert.deepEqual(months.map((m) => m.month), [
+        '2024-01', '2024-02', '2024-03', '2024-04', '2024-05', '2024-06',
+        '2024-07', '2024-08', '2024-09', '2024-10', '2024-11', '2024-12',
+    ]);
+    assert.equal(months[0].assistantMessages, 1);
+    assert.equal(months[1].assistantMessages, 0, 'February had no activity but still gets a zero point, not a gap');
+    assert.equal(months[5].assistantMessages, 1);
+});
+
+test('reduceDigest: "all" months span only from the first to the last real message, not every touched year\'s Jan–Dec', () => {
+    const digest = makeDigest({
+        'alice.png': {
+            sig: {}, chatCount: 1,
+            y: {
+                '2023': {
+                    um: 0, am: 1, gen: 1, uw: 0, aw: 1, sw: 0, gt: 0, mo: {}, ap: {},
+                    mm: { '2023-11': { am: 1, mo: {}, ap: {} } },
+                    d: {}, h: new Array(24).fill(0),
+                    first: new Date(2023, 10, 15).getTime(), last: new Date(2023, 10, 15).getTime(), chats: 1,
+                    sup: { longestMessage: null, mostSwipes: null, longestGen: null, longestChat: null, bigWordDay: null },
+                },
+                '2024': {
+                    um: 0, am: 1, gen: 1, uw: 0, aw: 1, sw: 0, gt: 0, mo: {}, ap: {},
+                    mm: { '2024-02': { am: 1, mo: {}, ap: {} } },
+                    d: {}, h: new Array(24).fill(0),
+                    first: new Date(2024, 1, 10).getTime(), last: new Date(2024, 1, 10).getTime(), chats: 1,
+                    sup: { longestMessage: null, mostSwipes: null, longestGen: null, longestChat: null, bigWordDay: null },
+                },
+            },
+        },
+    });
+    const meta = resolveCharacterMeta([{ avatar: 'alice.png', name: 'Alice' }], [], {});
+    const summary = reduceDigest(digest, meta);
+    const months = summary.byYear.all.months;
+
+    // 2023-11 through 2024-02 inclusive — not all of 2023 and all of 2024.
+    assert.deepEqual(months.map((m) => m.month), ['2023-11', '2023-12', '2024-01', '2024-02']);
+    assert.equal(months[0].assistantMessages, 1);
+    assert.equal(months[1].assistantMessages, 0, 'December had no activity but is still a zero point in between');
+    assert.equal(months[3].assistantMessages, 1);
+});
+
+test('reduceDigest: characterList carries isNew for a specific year, omits it for "all"', () => {
+    const digest = makeDigest({
+        'alice.png': {
+            sig: {}, chatCount: 1,
+            y: {
+                '2023': {
+                    um: 1, am: 1, gen: 1, uw: 1, aw: 1, sw: 0, gt: 0, mo: {}, ap: {}, mm: {},
+                    d: {}, h: new Array(24).fill(0), first: null, last: null, chats: 1,
+                    sup: { longestMessage: null, mostSwipes: null, longestGen: null, longestChat: null, bigWordDay: null },
+                },
+                '2024': {
+                    um: 1, am: 1, gen: 1, uw: 1, aw: 1, sw: 0, gt: 0, mo: {}, ap: {}, mm: {},
+                    d: {}, h: new Array(24).fill(0), first: null, last: null, chats: 1,
+                    sup: { longestMessage: null, mostSwipes: null, longestGen: null, longestChat: null, bigWordDay: null },
+                },
+            },
+        },
+    });
+    const meta = resolveCharacterMeta([{ avatar: 'alice.png', name: 'Alice' }], [], {});
+    const summary = reduceDigest(digest, meta);
+
+    const alice2023 = summary.byYear['2023'].characters.find((c) => c.avatar === 'alice.png');
+    const alice2024 = summary.byYear['2024'].characters.find((c) => c.avatar === 'alice.png');
+    const aliceAll = summary.byYear.all.characters.find((c) => c.avatar === 'alice.png');
+
+    assert.equal(alice2023.isNew, true, 'first active year is "new"');
+    assert.equal(alice2024.isNew, false, 'second active year is "returning"');
+    assert.equal(aliceAll.isNew, undefined, '"all" has no meaningful new-vs-returning distinction');
+});

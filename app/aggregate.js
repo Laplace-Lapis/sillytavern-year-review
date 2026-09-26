@@ -138,6 +138,56 @@ function emptyYearAccumulator() {
     };
 }
 
+/**
+ * Lists every 'YYYY-MM' key from (y1,m1) to (y2,m2) inclusive, both 0-indexed months.
+ * @param {number} y1
+ * @param {number} m1
+ * @param {number} y2
+ * @param {number} m2
+ * @returns {string[]}
+ */
+function monthKeysBetween(y1, m1, y2, m2) {
+    const keys = [];
+    let y = y1;
+    let m = m1;
+    while (y < y2 || (y === y2 && m <= m2)) {
+        keys.push(`${y}-${String(m + 1).padStart(2, '0')}`);
+        m++;
+        if (m > 11) {
+            m = 0;
+            y++;
+        }
+    }
+    return keys;
+}
+
+/**
+ * The full range of month keys a year's line chart should show, so that a month with zero
+ * activity still gets a point at 0 instead of being skipped (which visually implies a slope
+ * through the gap rather than a dip to zero). A specific year always shows Jan–Dec; "all"
+ * shows every month from the first to the last message ever recorded (not Jan–Dec of every
+ * year touched), so a library that started in e.g. March doesn't grow two fake empty months.
+ * @param {string} year
+ * @param {number|null} globalFirstMs
+ * @param {number|null} globalLastMs
+ * @returns {string[]}
+ */
+function monthRangeFor(year, globalFirstMs, globalLastMs) {
+    if (year === 'unknown') {
+        return [];
+    }
+    if (year === ALL_YEARS_KEY) {
+        if (globalFirstMs === null || globalLastMs === null) {
+            return [];
+        }
+        const start = new Date(globalFirstMs);
+        const end = new Date(globalLastMs);
+        return monthKeysBetween(start.getFullYear(), start.getMonth(), end.getFullYear(), end.getMonth());
+    }
+    const y = Number(year);
+    return monthKeysBetween(y, 0, y, 11);
+}
+
 function pickBetter(current, candidate, isBetter) {
     if (!candidate) {
         return current;
@@ -311,14 +361,21 @@ export function reduceDigest(digest, characterMeta) {
     for (const [year, acc] of Object.entries(years)) {
         const streak = computeLongestStreak(acc.days);
         const busiestDay = computeBusiestDay(acc.days);
+        // isNew is only meaningful for a specific year (did this character first appear THIS
+        // year, vs. continuing from before) — for "all" every character's first year is
+        // trivially within range, so the flag is omitted (undefined) rather than always true.
+        const isSpecificYear = year !== ALL_YEARS_KEY && year !== 'unknown';
+        const yearNum = isSpecificYear ? Number(year) : null;
         const characterList = Object.entries(acc.characterStats)
-            .map(([avatar, stat]) => ({ avatar, ...stat }))
+            .map(([avatar, stat]) => ({
+                avatar, ...stat,
+                isNew: isSpecificYear ? firstYearByCharacter.get(avatar) === yearNum : undefined,
+            }))
             .sort((a, b) => b.messages - a.messages);
 
         let newCount = 0;
         let returningCount = 0;
-        if (year !== ALL_YEARS_KEY && year !== 'unknown') {
-            const yearNum = Number(year);
+        if (isSpecificYear) {
             for (const avatar of Object.keys(acc.characterStats)) {
                 if (firstYearByCharacter.get(avatar) === yearNum) {
                     newCount++;
@@ -327,6 +384,12 @@ export function reduceDigest(digest, characterMeta) {
                 }
             }
         }
+
+        const monthRange = monthRangeFor(year, allAcc.first, allAcc.last);
+        const months = monthRange.map((month) => {
+            const data = acc.months[month];
+            return { month, assistantMessages: data?.assistantMessages ?? 0, models: data?.models ?? {}, apis: data?.apis ?? {} };
+        });
 
         byYear[year] = {
             totals: {
@@ -345,9 +408,7 @@ export function reduceDigest(digest, characterMeta) {
                 newCharacters: newCount,
                 returningCharacters: returningCount,
             },
-            months: Object.entries(acc.months)
-                .sort(([a], [b]) => a.localeCompare(b))
-                .map(([month, data]) => ({ month, ...data })),
+            months,
             days: acc.days,
             hours: acc.hours,
             longestStreak: streak,
